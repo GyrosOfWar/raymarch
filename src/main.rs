@@ -2,10 +2,9 @@ extern crate cgmath;
 extern crate image;
 
 use cgmath::{Point3, Vector3, Point, Vector, EuclideanVector};
-use image::{GenericImage, ImageBuffer, Rgb, Pixel};
-use std::io::prelude::*;
+use image::{ImageBuffer, Rgb, Pixel};
+
 use std::path::Path;
-use std::cmp::Ordering;
 
 pub type Ray = cgmath::Ray3<f32>;
 pub const MAX_STEPS: usize = 64;
@@ -126,12 +125,28 @@ impl DistanceEstimator {
     pub fn eval(&self, p: Point3<f32>) -> f32 {
         (self.func)(p, &self.params)
     }
+
+    pub fn repeat_estimator(e: DistanceEstimator, c: Point3<f32>) -> DistanceEstimator {
+        DistanceEstimator {
+            params: e.params.clone(),
+            func: Box::new(move |p, params| {
+                // let q = p.rem_v(c) - c.mul_s(0.5);
+                let q = Point3::new(
+                    p.x % c.x - c.x * -0.5,
+                    p.y % c.y - c.y * -0.5,
+                    p.z % c.z - c.z * -0.5
+                    );
+                (e.func)(q, params)
+            })
+        }
+    }
 }
 
 fn main() {
+    let sphere = DistanceEstimator::sphere_estimator(0.1);
     let mut renderer = RayMarcher::new(800, 800, vec![
-        DistanceEstimator::sphere_estimator(0.5)]);
+        DistanceEstimator::repeat_estimator(sphere, Point3::new(1.0, 1.0, 1.0))]);
     renderer.render();
-    renderer.image.save(Path::new("image.png"));
+    renderer.image.save(Path::new("image.png")).unwrap();
     println!("Average iterations per pixel: {}", renderer.avg_iters);
 }

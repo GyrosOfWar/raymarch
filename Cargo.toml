@@ -3,5 +3,10 @@ name = "raymarch"
 version = "0.1.0"
 authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
+[[bin]]
+name = "main"
+
 [dependencies]
 cgmath = "*"
+image = "*"
+

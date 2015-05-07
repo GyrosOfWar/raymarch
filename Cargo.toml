@@ -7,6 +7,6 @@ authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 name = "main"
 
 [dependencies]
-cgmath = "*"
+nalgebra = "*"
 image = "*"
 

@@ -1,12 +1,32 @@
-extern crate cgmath;
+//extern crate "nalgebra" as na;
+extern crate nalgebra;
 extern crate image;
 
-use cgmath::{Point3, Vector3, Point, Vector, EuclideanVector};
 use image::{ImageBuffer, Rgb, Pixel};
-
+use nalgebra::*;
 use std::path::Path;
 
-pub type Ray = cgmath::Ray3<f32>;
+pub struct Ray {
+    pub origin: Point,
+    pub direction: Vector
+}
+
+impl Ray {
+    pub fn new(ro: Point, rd: Vector) -> Ray {
+        Ray {
+            origin: ro,
+            direction: rd
+        }
+    }
+
+    pub fn eval(&self, t: f32) -> Point {
+        self.origin + self.direction * t
+    }
+}
+
+pub type Point = Pnt3<f32>;
+pub type Vector = Vec3<f32>;
+
 pub const MAX_STEPS: usize = 100;
 pub const EPSILON: f32 = 0.00001;
 
@@ -47,17 +67,23 @@ impl RayMarcher {
     }
 
     #[inline]
+    fn eval_distance(current: Point, dist: &Vec<DistanceEstimator>) -> f32 {
+        let values = dist.iter().map(|d| d.eval(current));
+        let mut d = std::f32::INFINITY;
+        for i in values {
+            if i < d {
+                d = i;
+            }
+        }
+	d
+    }
+
+    #[inline]
     fn march_ray(ray: Ray, pixel: &mut Rgb<u8>, dist: &Vec<DistanceEstimator>) -> usize {
         let mut t = 0.0;
         for step in 0..MAX_STEPS {
-	    let current = ray.origin.add_v(&ray.direction.mul_s(t));
-	    let values = dist.iter().map(|d| d.eval(current));
-            let mut d = std::f32::INFINITY;
-            for i in values {
-                if i < d {
-                    d = i;
-                }
-            }
+	    let current = ray.eval(t);
+            let d = RayMarcher::eval_distance(current, dist);
 	    if d < EPSILON {
                 let brightness = 255 - (((step as f32) / (MAX_STEPS as f32)) * 256.0) as u8;
                 *pixel = Rgb { data: [brightness, brightness, brightness] };
@@ -70,21 +96,21 @@ impl RayMarcher {
 }
 
 pub struct Camera {
-    eye: Point3<f32>,
-    right: Vector3<f32>,
-    up: Vector3<f32>
+    eye: Point,
+    right: Vector,
+    up: Vector
 }
 
 impl Camera {
     pub fn zero() -> Camera {
         Camera {
-            eye: Point3::new(0.0, 0.0, -1.0),
-            right: Vector3::new(1.0, 0.0, 0.0),
-            up: Vector3::new(0.0, 1.0, 0.0)
+            eye: Pnt3::new(0.0, 0.0, -1.0),
+            right: Vec3::new(1.0, 0.0, 0.0),
+            up: Vec3::new(0.0, 1.0, 0.0)
         }
     }
 
-    pub fn new(eye: Point3<f32>, right: Vector3<f32>, up: Vector3<f32>) -> Camera {
+    pub fn new(eye: Point, right: Vector, up: Vector) -> Camera {
         Camera {
             eye: eye,
             right: right,
@@ -94,14 +120,15 @@ impl Camera {
 
     #[inline]
     pub fn ray(&self, u: f32, v: f32) -> Ray {
-        let ro = self.eye.add_v(&self.right.mul_s(u).add_v(&self.up.mul_s(v)));
+        // let ro = self.eye.add_v(&self.right.mul_s(u).add_v(&self.up.mul_s(v)));
+        // let rd = self.right.cross(&self.up).normalize();
+        let ro = self.eye + self.right * u + self.up * v;
         let rd = self.right.cross(&self.up).normalize();
-
-        cgmath::Ray::new(ro, rd)
+        Ray::new(ro, rd)
     }
 }
 
-pub type EstimatorFunc = Box<Fn(Point3<f32>, &[f32]) -> f32>;
+pub type EstimatorFunc = Box<Fn(Point, &[f32]) -> f32>;
 
 pub struct DistanceEstimator {
     params: Vec<f32>,
@@ -119,39 +146,38 @@ impl DistanceEstimator {
     pub fn sphere_estimator(radius: f32) -> DistanceEstimator {
         DistanceEstimator {
             params: vec![radius],
-            func: Box::new(|p, params| p.to_vec().length() - params[0])
+            func: Box::new(|p, params| p.to_vec().norm() - params[0])
         }
     }
 
-    pub fn cube_estimator(dimensions: Point3<f32>) -> DistanceEstimator {
+    pub fn cube_estimator(dimensions: Point) -> DistanceEstimator {
         DistanceEstimator {
             params: vec![dimensions.x, dimensions.y, dimensions.z],
             func: Box::new(move |p, params| {
-                let d = abs(p).sub_p(&dimensions);
-                // return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
-                d.y.max(d.z).max(d.x).min(0.0) + comp_max(d, 0.0).length()
+                let d = Pnt3::new(p.x.abs(), p.y.abs(), p.z.abs()) - dimensions;
+                d.y.max(d.z).max(d.x).min(0.0) + comp_max(d, 0.0).norm()
             })
         }
     }
 
     #[inline]
-    pub fn eval(&self, p: Point3<f32>) -> f32 {
+    pub fn eval(&self, p: Point) -> f32 {
         (self.func)(p, &self.params)
     }
 
-    // #[inline]
-    // pub fn calc_normal(&self, p: Point3<f32>, h: f32) -> Vector3<f32> {
-    //     Vector3::new(
-    //         self.eval(p.add_s(h)) - self.eval(p.rem_s(h)),
-    //         self.eval(p.add_s(h)) - self.eval(p.rem_s(h)),
-    //         self.eval(p.add_s(h)) - self.eval(p.rem_s(h)))
-    // }
+    #[inline]
+    pub fn calc_normal(&self, p: Point, hx: f32, hy: f32, hz: f32) -> Vector {
+        Vec3::new(
+            self.eval(p + hx) - self.eval(p - hx),
+            self.eval(p + hy) - self.eval(p - hy),
+            self.eval(p + hz) - self.eval(p - hz))
+    }
     
-    pub fn repeat(self, c: Point3<f32>) -> DistanceEstimator {
+    pub fn repeat(self, c: Point) -> DistanceEstimator {
         DistanceEstimator {
             params: self.params.clone(),
             func: Box::new(move |p, params| {
-                let q = Point3::new(
+                let q = Pnt3::new(
                     (p.x % c.x) - c.x * -0.5,
                     (p.y % c.y) - c.y * -0.5,
                     (p.z % c.z) - c.z * -0.5);
@@ -182,22 +208,18 @@ fn push_all<T: Clone>(dest: &mut Vec<T>, src: &[T]) {
     }
 }
 
-fn abs(p: Point3<f32>) -> Point3<f32> {
-    Point3::new(p.x.abs(), p.y.abs(), p.z.abs())
-}
-
-fn comp_max(p: Vector3<f32>, t: f32) -> Vector3<f32> {
-    Vector3::new(p.x.max(t), p.y.max(t), p.z.max(t))
+fn comp_max(p: Vector, t: f32) -> Vector {
+    Vec3::new(p.x.max(t), p.y.max(t), p.z.max(t))
 }
 
 fn main() {
-    //let sphere = DistanceEstimator::sphere_estimator(0.1).repeat(Point3::new(0.4, 1.0, 0.4));
-    let cube = DistanceEstimator::cube_estimator(Point3::new(0.1, 0.1, 0.1)).repeat(Point3::new(0.6, 1.0, 0.6));
+    //let sphere = DistanceEstimator::sphere_estimator(0.1).repeat(Pnt3::new(0.4, 1.0, 0.4));
+    let cube = DistanceEstimator::cube_estimator(Pnt3::new(0.1, 0.1, 0.1)).repeat(Pnt3::new(0.6, 1.0, 0.6));
    // let intersect = sphere.intersect(cube);
     let camera = Camera {
-        eye: Point3::new(-1.0, 1.0, -1.0),
-        right: Vector3::new(1.0, 0.0, 0.0),
-        up: Vector3::new(0.0, 0.1, 0.9)
+        eye: Pnt3::new(-1.0, 1.0, -1.0),
+        right: Vec3::new(1.0, 0.0, 0.0),
+        up: Vec3::new(0.0, 0.1, 0.9)
     };
     let mut renderer = RayMarcher::new(800, 800, camera, vec![cube]);
     renderer.render();

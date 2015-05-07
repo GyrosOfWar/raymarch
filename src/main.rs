@@ -20,12 +20,12 @@ pub struct RayMarcher {
 }
 
 impl RayMarcher {
-    pub fn new(x_size: usize, y_size: usize, distance_estimator: Vec<DistanceEstimator>) -> RayMarcher {
+    pub fn new(x_size: usize, y_size: usize, camera: Camera, distance_estimator: Vec<DistanceEstimator>) -> RayMarcher {
         RayMarcher {
             image: ImageBuffer::new(x_size as u32, y_size as u32),
             x_size: x_size,
             y_size: y_size,
-            camera: Camera::zero(),
+            camera: camera,
             avg_iters: 0.0,
             distance_estimator: distance_estimator
         }
@@ -84,6 +84,14 @@ impl Camera {
         }
     }
 
+    pub fn new(eye: Point3<f32>, right: Vector3<f32>, up: Vector3<f32>) -> Camera {
+        Camera {
+            eye: eye,
+            right: right,
+            up: up
+        }
+    }
+
     #[inline]
     pub fn ray(&self, u: f32, v: f32) -> Ray {
         let ro = self.eye.add_v(&self.right.mul_s(u).add_v(&self.up.mul_s(v)));
@@ -91,13 +99,6 @@ impl Camera {
 
         cgmath::Ray::new(ro, rd)
     }
-}
-
-pub fn repeat<F>(p: Point3<f32>, dist: F, params: &Vec<f32>) -> f32 where F: Fn(Point3<f32>, &Vec<f32>) -> f32 {
-    let x = p.x % 1.0 - 0.5;
-    let z = p.z % 1.0 - 0.5;
-    let q = Point3::new(x, p.y, z);
-    dist(q, params)
 }
 
 pub type EstimatorFunc = Box<Fn(Point3<f32>, &[f32]) -> f32>;
@@ -133,10 +134,19 @@ impl DistanceEstimator {
         }
     }
 
+    #[inline]
     pub fn eval(&self, p: Point3<f32>) -> f32 {
         (self.func)(p, &self.params)
     }
 
+    // #[inline]
+    // pub fn calc_normal(&self, p: Point3<f32>, h: f32) -> Vector3<f32> {
+    //     Vector3::new(
+    //         self.eval(p.add_s(h)) - self.eval(p.rem_s(h)),
+    //         self.eval(p.add_s(h)) - self.eval(p.rem_s(h)),
+    //         self.eval(p.add_s(h)) - self.eval(p.rem_s(h)))
+    // }
+    
     pub fn repeat(self, c: Point3<f32>) -> DistanceEstimator {
         DistanceEstimator {
             params: self.params.clone(),
@@ -181,10 +191,15 @@ fn comp_max(p: Vector3<f32>, t: f32) -> Vector3<f32> {
 }
 
 fn main() {
-    let sphere = DistanceEstimator::sphere_estimator(0.8);
-    let cube = DistanceEstimator::cube_estimator(Point3::new(0.3, 0.9, 1.0)).repeat(Point3::new(0.8, 0.0, 0.5));
-    //let intersect = sphere.intersect(cube);
-    let mut renderer = RayMarcher::new(800, 800, vec![cube]);
+    //let sphere = DistanceEstimator::sphere_estimator(0.1).repeat(Point3::new(0.4, 1.0, 0.4));
+    let cube = DistanceEstimator::cube_estimator(Point3::new(0.1, 0.1, 0.1)).repeat(Point3::new(0.6, 1.0, 0.6));
+   // let intersect = sphere.intersect(cube);
+    let camera = Camera {
+        eye: Point3::new(-1.0, 1.0, -1.0),
+        right: Vector3::new(1.0, 0.0, 0.0),
+        up: Vector3::new(0.0, 0.1, 0.9)
+    };
+    let mut renderer = RayMarcher::new(800, 800, camera, vec![cube]);
     renderer.render();
     renderer.image.save(Path::new("image.png")).unwrap();
     println!("Average iterations per pixel: {}", renderer.avg_iters);

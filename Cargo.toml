@@ -10,3 +10,5 @@ name = "main"
 nalgebra = "*"
 image = "*"
 
+[profile.release]
+debug = true

@@ -13,8 +13,9 @@ mod camera;
 mod ray;
 mod distance_estimator;
 mod light;
+mod scene;
 
-pub const MAX_STEPS: usize = 64;
+pub const MAX_STEPS: usize = 150;
 pub const EPSILON: f32 = 0.00001;
 
 pub struct RayMarcher {
@@ -40,10 +41,10 @@ impl RayMarcher {
     }
 
     pub fn render(&mut self) -> ImageBuffer<Rgb<f32>, Vec<f32>> {
-        // let sample_pattern = [(-0.5, -0.5),
-        //                       (0.5, -0.5),
-        //                       (-0.5, 0.5),
-        //                       (0.5, 0.5)];
+//         let sample_pattern = [(-0.5, -0.5),
+//                               (0.5, -0.5),
+//                               (-0.5, 0.5),
+//                               (0.5, 0.5)];
         let sample_pattern = [(0.0, 0.0)];
         let sample_count = sample_pattern.len() as f32;
         
@@ -55,26 +56,35 @@ impl RayMarcher {
         for (x, y, pixel) in image.enumerate_pixels_mut() {
             let xx = x as f32;
             let yy = y as f32;
-
+            
             let samples = sample_pattern
                 .iter()
                 .map(|&(x_off, y_off)| {
-                    let u = (xx + x_off) * 2.0 / x_res - 1.0;
-                    let v = (yy + y_off) * 2.0 / y_res - 1.0;
+          	  		let xf = xx + x_off;
+            		let yf = yy + y_off;
+                    let u = xf * 2.0 / x_res - 1.0;
+                    let v = yf * 2.0 / y_res - 1.0;
                     let ray = self.camera.ray(u, v);
-                    self.march_ray(ray).1
-                });
-            let mut color = [0.0, 0.0, 0.0];
+                    let (cnt, sample) = self.march_ray(ray);
+					iter_sum += cnt;
+					sample
+        		});
+            let mut color = Vec3::new(0.0, 0.0, 0.0);
             for sample in samples {
-                color[0] += sample.data[0] / sample_count;
-                color[1] += sample.data[1] / sample_count;
-                color[2] += sample.data[2] / sample_count;
+				color = color + (sample / sample_count);
             }
-            let c = Rgb { data: color };
+//            if color.x > 0.999 {
+//                println!("{}, {}: {:?} -> {} {} {}", x, y, color, 
+//                    to_u8(color.x),
+//                    to_u8(color.y),
+//                    to_u8(color.z));
+//                
+//            }
+            
+            let c = Rgb { data: *color.as_array() };
             *pixel = c;
-            //iter_sum += count;
         }
-        let n = x_res * y_res;
+        let n = x_res * y_res * sample_count;
         self.avg_iters = iter_sum as f32 / n;
 
         return image;
@@ -82,43 +92,41 @@ impl RayMarcher {
 
     #[inline]
     fn shade_pixel(&self, p: Point, normal: Vector) -> Color {
-        let mut color = [0.0, 0.0, 0.0];
+        let mut color = Vec3::new(0.0, 0.0, 0.0);
         for light in self.lights.iter() {
-            let light_dir = (light.position - p).normalize();
-            let dot = normal.dot(&light_dir);
-            let light = light.color.map(|c| c * dot); 
-            color[0] += light.data[0];
-            color[1] += light.data[1];
-            color[2] += light.data[2];
+            let light_dir = light.calc_direction(p);
+            let light_intensity = light.calc_intensity(p);
+            let dot = normal.dot(&light_dir).max(0.0);
+            color = color + (light_intensity * dot);
         }
-        
-        Rgb { data: color }
+        color
     }
+    
 
     #[inline]
     fn background_color(&self) -> Color {
-        Rgb { data: [0.0, 0.0, 0.0] }
+        Vec3::new(0.0, 0.0, 0.0)
     }
 
     #[inline]
     fn march_ray(&self, ray: Ray) -> (usize, Color) {
         let mut t = 0.0;
         for step in 0..MAX_STEPS {
-	    let current = ray.eval(t);
+		    let current = ray.eval(t);
             let d = self.distance_estimator.eval(current);
-	    if d < EPSILON {
+		    if d < EPSILON {
                 let h = 0.05;
                 let color = self.shade_pixel(current, self.distance_estimator.normal(current, h, h, h));
-	        return (step, color);
-	    }
-	    t += d;
+		        return (step, color);
+		    }
+	    	t += d;
         }
         (MAX_STEPS, self.background_color())
     }
 }
 
 fn to_u8(channel: f32) -> u8 {
-    (channel * 256.0) as u8
+    (clamp(channel, 0.0, 1.0) * 255.0) as u8
 }
 
 fn main() {
@@ -131,15 +139,8 @@ fn main() {
         right: Vec3::new(1.0, 0.0, 0.0),
         up: Vec3::new(0.0, 1.0, 0.0)
     };
-    let lights = vec![
-        Light {
-            position: Pnt3::new(1.0, -1.0, 1.0),
-            color: Rgb { data: [1.0, 1.0, 1.0] }
-        }, Light {
-            position: Pnt3::new(5.0, 1.0, 1.0),
-            color: Rgb { data: [1.0, 1.0, 1.0] }
-        }];
-    
+	let lights = vec![Light::new(Pnt3::new(1.0, 1.0, 1.0), Vec3::new(1.0, 1.0, 1.0), 1.0)];
+   
     let mut renderer = RayMarcher::new(800, 800, Box::new(camera), sphere, lights);
     let result = renderer.render();
     let w = result.width();

@@ -2,11 +2,13 @@
 
 use nalgebra::*;
 use ray::{Ray, Point, Vector};
+use std::fmt;
 
-pub trait Camera {
+pub trait Camera: fmt::Debug {
     fn ray(&self, u: f32, v: f32) -> Ray;
 }
 
+#[derive(Debug)]
 pub struct OrthographicCamera {
     pub eye: Point,
     pub right: Vector,

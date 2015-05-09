@@ -1,5 +1,4 @@
 use ray::*;
-use image::Rgb;
 use nalgebra::*;
 
 pub type Color = Vec3<f32>;
@@ -22,6 +21,7 @@ impl Light {
 		}
 	}
 	
+	#[inline]
 	pub fn calc_intensity(&self, surface_point: Point) -> Color {
 		let distance = (self.position - surface_point).norm();
 		let factor = distance * self.intensity * 1.0 / self.constant_attenuation;
@@ -29,6 +29,7 @@ impl Light {
 		self.color * factor
 	}
 	
+	#[inline]
 	pub fn calc_direction(&self, surface_point: Point) -> Vector {
 		(self.position - surface_point).normalize()
 	}

@@ -41,11 +41,11 @@ impl RayMarcher {
     }
 
     pub fn render(&mut self) -> ImageBuffer<Rgb<f32>, Vec<f32>> {
-//         let sample_pattern = [(-0.5, -0.5),
-//                               (0.5, -0.5),
-//                               (-0.5, 0.5),
-//                               (0.5, 0.5)];
-        let sample_pattern = [(0.0, 0.0)];
+         let sample_pattern = [(-0.25, -0.25),
+                               (0.25, -0.25),
+                               (-0.25, 0.25),
+                               (0.25, 0.25)];
+     //   let sample_pattern = [(0.0, 0.0)];
         let sample_count = sample_pattern.len() as f32;
         
         let mut image = ImageBuffer::new(self.x_size as u32, self.y_size as u32);
@@ -73,13 +73,6 @@ impl RayMarcher {
             for sample in samples {
 				color = color + (sample / sample_count);
             }
-//            if color.x > 0.999 {
-//                println!("{}, {}: {:?} -> {} {} {}", x, y, color, 
-//                    to_u8(color.x),
-//                    to_u8(color.y),
-//                    to_u8(color.z));
-//                
-//            }
             
             let c = Rgb { data: *color.as_array() };
             *pixel = c;
@@ -129,26 +122,35 @@ fn to_u8(channel: f32) -> u8 {
     (clamp(channel, 0.0, 1.0) * 255.0) as u8
 }
 
-fn main() {
-    let sphere = DistanceEstimator::sphere_estimator(0.8); //.repeat(Pnt3::new(0.4, 1.0, 0.4));
-    //let cube = DistanceEstimator::cube_estimator(Pnt3::new(0.1, 0.1, 0.1)).repeat(Pnt3::new(0.6, 1.0, 0.6));
-    // let intersect = sphere.intersect(cube);
-    //let min = DistanceEstimator::min_estimator(vec![sphere, cube]);
-    let camera = OrthographicCamera {
-        eye: Pnt3::new(0.0, 0.0, -1.0),
-        right: Vec3::new(1.0, 0.0, 0.0),
-        up: Vec3::new(0.0, 1.0, 0.0)
-    };
-	let lights = vec![Light::new(Pnt3::new(1.0, 1.0, 1.0), Vec3::new(1.0, 1.0, 1.0), 1.0)];
-   
-    let mut renderer = RayMarcher::new(800, 800, Box::new(camera), sphere, lights);
-    let result = renderer.render();
-    let w = result.width();
-    let h = result.height();
-    let pixels: Vec<_> = result.into_raw();
-    let bytes: Vec<_> = pixels.into_iter().map(|f| to_u8(f)).collect();
-    let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
-    image.save(Path::new("image.png")).unwrap();
-
-    println!("Average iterations per pixel: {}", renderer.avg_iters);
+fn main() { 
+	let mut p = 0.1;
+	let increment = 0.1;
+	let p_max = 1.0;
+	let mut i = 0;
+	
+	while p < p_max {
+        let camera = OrthographicCamera {
+        	eye: Pnt3::new(0.0, 0.0, -1.0),
+        	right: Vec3::new(p, 1.0 - p, 0.0),
+        	up: Vec3::new(0.0, 1.0, 0.0)
+    	};
+        //let sphere = DistanceEstimator::sphere_estimator(p); // .repeat(Pnt3::new(0.4, 1.0, 0.4));
+	    let cube = DistanceEstimator::cube_estimator(Pnt3::new(0.5, 0.5, 0.5)); //.repeat(Pnt3::new(0.6, 1.0, 0.6));
+	    //let intersect = cube.intersect(sphere);
+	    //let min = DistanceEstimator::min_estimator(vec![sphere, cube]);
+		let lights = vec![Light::new(Pnt3::new(-5.0, -5.0, -1.0), Vec3::new(1.0, 1.0, 1.0), 0.7)];
+						  //Light::new(Pnt3::new(-5.0, -5.0, 1.0), Vec3::new(1.0, 1.0, 1.0), 0.7)];
+	   	
+	    let mut renderer = RayMarcher::new(800, 800, Box::new(camera.clone()), cube, lights);
+	    let result = renderer.render();
+	    let w = result.width();
+	    let h = result.height();
+	    let pixels: Vec<_> = result.into_raw();
+	    let bytes: Vec<_> = pixels.into_iter().map(|f| to_u8(f)).collect();
+	    let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
+	    image.save(Path::new(&format!("image_{}.png", i))).unwrap();
+	    i += 1;
+	    p += increment;
+	}
+    //println!("Average iterations per pixel: {}", renderer.avg_iters);
 }

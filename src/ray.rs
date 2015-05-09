@@ -9,6 +9,7 @@ pub struct Ray {
 }
 
 impl Ray {
+    #[inline]
     pub fn new(ro: Point, rd: Vector) -> Ray {
         Ray {
             origin: ro,
@@ -16,6 +17,7 @@ impl Ray {
         }
     }
 
+	#[inline]
     pub fn eval(&self, t: f32) -> Point {
         self.origin + self.direction * t
     }

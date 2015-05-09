@@ -8,7 +8,7 @@ pub trait Camera: fmt::Debug {
     fn ray(&self, u: f32, v: f32) -> Ray;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct OrthographicCamera {
     pub eye: Point,
     pub right: Vector,

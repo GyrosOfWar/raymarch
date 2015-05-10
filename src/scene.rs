@@ -4,9 +4,9 @@ use camera::Camera;
 
 #[derive(Debug)]
 pub struct Scene {
-	lights: Vec<Light>, 
-	distance_f: DistanceEstimator,
-	camera: Box<Camera>
+	pub lights: Vec<Light>, 
+	pub distance_f: DistanceEstimator,
+	pub camera: Box<Camera>
 }
 
 impl Scene {

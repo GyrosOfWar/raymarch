@@ -9,6 +9,7 @@ name = "main"
 [dependencies]
 nalgebra = "*"
 image = "*"
+rand = "*"
 
 [profile.release]
 debug = true

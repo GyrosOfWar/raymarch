@@ -23,7 +23,7 @@ impl DistanceEstimator {
     pub fn sphere_estimator(radius: f32) -> DistanceEstimator {
         DistanceEstimator {
             params: vec![radius],
-            func: Box::new(|p, params| p.to_vec().norm() - params[0]),
+            func: Box::new(|p, params| p.to_vector().norm() - params[0]),
             name: "Sphere".to_string()
         }
     }
@@ -32,7 +32,7 @@ impl DistanceEstimator {
         DistanceEstimator {
             params: vec![dimensions.x, dimensions.y, dimensions.z],
             func: Box::new(move |p, _| {
-                let d = Pnt3::new(p.x.abs(), p.y.abs(), p.z.abs()) - dimensions;
+                let d = Point3::new(p.x.abs(), p.y.abs(), p.z.abs()) - dimensions;
                 d.y.max(d.z).max(d.x).min(0.0) + comp_max(d, 0.0).norm()
             }),
             name: "Cube".to_string()
@@ -65,7 +65,7 @@ impl DistanceEstimator {
 
     #[inline]
     pub fn normal(&self, p: Point, hx: f32, hy: f32, hz: f32) -> Vector {
-        Vec3::new(
+        Vector3::new(
             self.eval(p + hx) - self.eval(p - hx),
             self.eval(p + hy) - self.eval(p - hy),
             self.eval(p + hz) - self.eval(p - hz))
@@ -76,7 +76,7 @@ impl DistanceEstimator {
         DistanceEstimator {
             params: self.params.clone(),
             func: Box::new(move |p, params| {
-                let q = Pnt3::new(
+                let q = Point3::new(
                     (p.x % c.x) - c.x * -0.5,
                     (p.y % c.y) - c.y * -0.5,
                     (p.z % c.z) - c.z * -0.5);
@@ -113,5 +113,5 @@ fn push_all<T: Clone>(dest: &mut Vec<T>, src: &[T]) {
 }
 
 fn comp_max(p: Vector, t: f32) -> Vector {
-    Vec3::new(p.x.max(t), p.y.max(t), p.z.max(t))
+    Vector3::new(p.x.max(t), p.y.max(t), p.z.max(t))
 }

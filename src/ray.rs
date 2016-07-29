@@ -1,7 +1,7 @@
 use nalgebra::*;
 
-pub type Point = Pnt3<f32>;
-pub type Vector = Vec3<f32>;
+pub type Point = Point3<f32>;
+pub type Vector = Vector3<f32>;
 
 pub struct Ray {
     pub origin: Point,

@@ -26,16 +26,14 @@ pub struct RayMarcher {
     x_size: usize,
     y_size: usize,
     scene: Scene,
-    avg_iters: f32,
 }
 
 impl RayMarcher {
     pub fn new(x_size: usize, y_size: usize, scene: Scene) -> RayMarcher {
         RayMarcher {
-            x_size: x_size,
-            y_size: y_size,
-            avg_iters: 0.0,
-            scene: scene,
+            x_size,
+            y_size,
+            scene,
         }
     }
 
@@ -48,7 +46,7 @@ impl RayMarcher {
             let sample_count = samples.len() as f32;
             for (count, s) in samples {
                 if count < MAX_STEPS {
-                    color = color + (s / sample_count);
+                    color += s / sample_count;
                 }
             }
             let c = Rgb {
@@ -56,13 +54,13 @@ impl RayMarcher {
             };
             *pixel = c;
         }
-        return image;
+        image
     }
 
     #[inline]
     fn shade_pixel(&self, p: Point, normal: Vector) -> Color {
         let mut color = Vector3::new(0.0, 0.0, 0.0);
-        for light in self.scene.lights.iter() {
+        for light in &self.scene.lights {
             let light_dir = light.calc_direction(p);
             let light_intensity = light.calc_intensity(p);
             let dot = normal.dot(&light_dir).max(0.0);
@@ -98,11 +96,6 @@ fn to_u8(channel: f32) -> u8 {
 }
 
 fn main() {
-    let mut p = 0.1;
-    let increment = 0.1;
-    let p_max = 1.0;
-    let mut i = 0;
-
     //while p < p_max {
     let sampler = StratifiedSampler::new(800.0, 800.0, 9);
     let camera = OrthographicCamera::new(
@@ -129,11 +122,7 @@ fn main() {
     let w = result.width();
     let h = result.height();
     let pixels: Vec<_> = result.into_raw();
-    let bytes: Vec<_> = pixels.into_iter().map(|f| to_u8(f)).collect();
+    let bytes: Vec<_> = pixels.into_iter().map(to_u8).collect();
     let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
-    image.save(Path::new(&format!("image_{}.png", i))).unwrap();
-    i += 1;
-    p += increment;
-    //}
-    //println!("Average iterations per pixel: {}", renderer.avg_iters);
+    image.save(Path::new("image_0.png")).unwrap();
 }

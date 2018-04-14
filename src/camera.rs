@@ -2,11 +2,11 @@ use rand::{thread_rng, Rng, ThreadRng};
 use ray::{Point, Ray, Vector};
 use std::fmt;
 
-pub trait Camera: fmt::Debug {
+pub trait Camera {
     fn samples(&mut self, x: u32, y: u32) -> Vec<Ray>;
 }
 
-#[derive(Debug)]
+#[allow(unused)]
 pub struct OrthographicCamera {
     eye: Point,
     right: Vector,
@@ -26,12 +26,12 @@ impl OrthographicCamera {
         sampler: Box<Sampler>,
     ) -> OrthographicCamera {
         OrthographicCamera {
-            eye: eye,
-            right: right,
-            up: up,
-            x_res: x_res,
-            y_res: y_res,
-            sampler: sampler,
+            eye,
+            right,
+            up,
+            x_res,
+            y_res,
+            sampler,
         }
     }
 }
@@ -62,10 +62,11 @@ fn pixel_to_ndc(x: f32, y: f32, x_res: f32, y_res: f32) -> (f32, f32) {
 pub type Sample = (f32, f32);
 
 // TODO change to using iterators
-pub trait Sampler: fmt::Debug {
+pub trait Sampler {
     fn get_samples(&mut self, px: u32, py: u32) -> Vec<Sample>;
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct SimpleSampler {
     pub x_res: f32,
@@ -95,11 +96,11 @@ impl StratifiedSampler {
 
         let samples_per_side = (spp as f32).sqrt() as usize;
         StratifiedSampler {
+            x_res,
+            y_res,
+            samples_per_side,
             rng: thread_rng(),
-            x_res: x_res,
-            y_res: y_res,
             samples_per_pixel: spp,
-            samples_per_side: samples_per_side,
             stride: 1.0 / samples_per_side as f32,
         }
     }

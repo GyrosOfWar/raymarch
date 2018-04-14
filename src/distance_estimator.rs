@@ -40,6 +40,7 @@ impl DistanceEstimator {
         let names: Vec<_> = estimators.iter().map(|e| e.name.clone()).collect();
         let name = format!("Minimum of {:?}", names);
         DistanceEstimator {
+            name,
             params: Vec::new(),
             func: Box::new(move |p, _| {
                 let values = estimators.iter().map(|e| e.eval(p));
@@ -51,7 +52,6 @@ impl DistanceEstimator {
                 }
                 min
             }),
-            name: name,
         }
     }
 
@@ -73,6 +73,7 @@ impl DistanceEstimator {
         let name = format!("Repeat of {}", self.name.clone());
         DistanceEstimator {
             params: self.params.clone(),
+            name,
             func: Box::new(move |p, params| {
                 let q = Point3::new(
                     (p.x % c.x) - c.x * -0.5,
@@ -81,7 +82,6 @@ impl DistanceEstimator {
                 );
                 (self.func)(q, params)
             }),
-            name: name,
         }
     }
 
@@ -97,13 +97,13 @@ impl DistanceEstimator {
         );
 
         DistanceEstimator {
-            params: params,
+            params,
+            name,
             func: Box::new(move |p, params| {
                 let first = (self.func)(p, &params[..len]);
                 let second = (other.func)(p, &params[len..]);
                 first.max(second)
             }),
-            name: name,
         }
     }
 }

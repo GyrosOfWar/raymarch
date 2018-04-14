@@ -14,10 +14,10 @@ pub struct Light {
 impl Light {
     pub fn new(position: Point, color: Color, intensity: f32) -> Light {
         Light {
-            position: position,
-            color: color,
-            intensity: intensity,
             constant_attenuation: 1.0,
+            position,
+            color,
+            intensity,
         }
     }
 

@@ -2,7 +2,6 @@ use camera::Camera;
 use distance_estimator::DistanceEstimator;
 use light::Light;
 
-#[derive(Debug)]
 pub struct Scene {
     pub lights: Vec<Light>,
     pub distance_f: DistanceEstimator,
@@ -16,9 +15,9 @@ impl Scene {
         camera: Box<Camera>,
     ) -> Scene {
         Scene {
-            lights: lights,
             distance_f: distance_estimator,
-            camera: camera,
+            lights,
+            camera,
         }
     }
 }

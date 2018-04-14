@@ -1,16 +1,13 @@
-#[allow(unused, dead_code)]
-
+use nalgebra::{Point3, Vector3};
 use ray::*;
-use nalgebra::*;
-use std::f32;
-use std::fmt;
+use std::{f32, fmt};
 
 pub type EstimatorFunc = Box<Fn(Point, &[f32]) -> f32>;
 
 pub struct DistanceEstimator {
     params: Vec<f32>,
     func: EstimatorFunc,
-    name: String
+    name: String,
 }
 
 impl fmt::Debug for DistanceEstimator {
@@ -23,8 +20,8 @@ impl DistanceEstimator {
     pub fn sphere_estimator(radius: f32) -> DistanceEstimator {
         DistanceEstimator {
             params: vec![radius],
-            func: Box::new(|p, params| p.to_vector().norm() - params[0]),
-            name: "Sphere".to_string()
+            func: Box::new(|p, params| p.coords.norm() - params[0]),
+            name: "Sphere".to_string(),
         }
     }
 
@@ -35,7 +32,7 @@ impl DistanceEstimator {
                 let d = Point3::new(p.x.abs(), p.y.abs(), p.z.abs()) - dimensions;
                 d.y.max(d.z).max(d.x).min(0.0) + comp_max(d, 0.0).norm()
             }),
-            name: "Cube".to_string()
+            name: "Cube".to_string(),
         }
     }
     // Compose together a vector of estimators by taking the minimum of each of them
@@ -54,23 +51,24 @@ impl DistanceEstimator {
                 }
                 min
             }),
-            name: name
+            name: name,
         }
     }
-    
+
     #[inline]
     pub fn eval(&self, p: Point) -> f32 {
         (self.func)(p, &self.params)
     }
 
     #[inline]
-    pub fn normal(&self, p: Point, hx: f32, hy: f32, hz: f32) -> Vector {
+    pub fn normal(&self, p: Point, h: Vector) -> Vector {
         Vector3::new(
-            self.eval(p + hx) - self.eval(p - hx),
-            self.eval(p + hy) - self.eval(p - hy),
-            self.eval(p + hz) - self.eval(p - hz))
+            self.eval(p + h) - self.eval(p - h),
+            self.eval(p + h) - self.eval(p - h),
+            self.eval(p + h) - self.eval(p - h),
+        )
     }
-    
+
     pub fn repeat(self, c: Point) -> DistanceEstimator {
         let name = format!("Repeat of {}", self.name.clone());
         DistanceEstimator {
@@ -79,10 +77,11 @@ impl DistanceEstimator {
                 let q = Point3::new(
                     (p.x % c.x) - c.x * -0.5,
                     (p.y % c.y) - c.y * -0.5,
-                    (p.z % c.z) - c.z * -0.5);
+                    (p.z % c.z) - c.z * -0.5,
+                );
                 (self.func)(q, params)
             }),
-            name: name
+            name: name,
         }
     }
 
@@ -91,7 +90,11 @@ impl DistanceEstimator {
         push_all(&mut params, &self.params);
         push_all(&mut params, &other.params);
         let len = self.params.len();
-        let name = format!("Intersection of {} and {}", self.name.clone(), other.name.clone());
+        let name = format!(
+            "Intersection of {} and {}",
+            self.name.clone(),
+            other.name.clone()
+        );
 
         DistanceEstimator {
             params: params,
@@ -100,10 +103,9 @@ impl DistanceEstimator {
                 let second = (other.func)(p, &params[len..]);
                 first.max(second)
             }),
-            name: name
+            name: name,
         }
     }
-
 }
 
 fn push_all<T: Clone>(dest: &mut Vec<T>, src: &[T]) {

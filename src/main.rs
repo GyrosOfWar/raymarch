@@ -1,25 +1,22 @@
-#![cfg_attr(feature="clippy", feature(plugin))]
-#![cfg_attr(feature="clippy", plugin(clippy))]
-
-#[allow(unused, dead_code)]
-
-extern crate nalgebra;
 extern crate image;
+extern crate nalgebra;
 extern crate rand;
 
-use image::{ImageBuffer, Rgb, Pixel};
-use nalgebra::*;
-use std::path::Path;
+// TODO port to webasm?
+
 use camera::*;
-use ray::{Ray, Point, Vector};
 use distance_estimator::*;
+use image::{ImageBuffer, Rgb};
 use light::*;
+use nalgebra::*;
+use ray::{Point, Ray, Vector};
 use scene::Scene;
+use std::path::Path;
 
 mod camera;
-mod ray;
 mod distance_estimator;
 mod light;
+mod ray;
 mod scene;
 
 pub const MAX_STEPS: usize = 64;
@@ -38,7 +35,7 @@ impl RayMarcher {
             x_size: x_size,
             y_size: y_size,
             avg_iters: 0.0,
-            scene: scene
+            scene: scene,
         }
     }
 
@@ -54,7 +51,9 @@ impl RayMarcher {
                     color = color + (s / sample_count);
                 }
             }
-            let c = Rgb { data: [color.x, color.y, color.z] };
+            let c = Rgb {
+                data: [color.x, color.y, color.z],
+            };
             *pixel = c;
         }
         return image;
@@ -67,11 +66,11 @@ impl RayMarcher {
             let light_dir = light.calc_direction(p);
             let light_intensity = light.calc_intensity(p);
             let dot = normal.dot(&light_dir).max(0.0);
-            color = color + (light_intensity * dot);
+            color += light_intensity * dot;
         }
         color
     }
-    
+
     #[inline]
     fn background_color(&self) -> Color {
         Vector3::new(0.0, 0.0, 0.0)
@@ -81,14 +80,14 @@ impl RayMarcher {
     fn march_ray(&self, ray: Ray) -> (usize, Color) {
         let mut t = 0.0;
         for step in 0..MAX_STEPS {
-		    let current = ray.eval(t);
-	        let d = self.scene.distance_f.eval(current);
-		    if d < EPSILON {
-		        let h = 0.05;
-	            let color = self.shade_pixel(current, self.scene.distance_f.normal(current, h, h, h));
-				return (step, color);
-		    }
-		    t += d;
+            let current = ray.eval(t);
+            let d = self.scene.distance_f.eval(current);
+            if d < EPSILON {
+                let h = Vector::new(0.05, 0.05, 0.05);
+                let color = self.shade_pixel(current, self.scene.distance_f.normal(current, h));
+                return (step, color);
+            }
+            t += d;
         }
         (MAX_STEPS, self.background_color())
     }
@@ -98,38 +97,43 @@ fn to_u8(channel: f32) -> u8 {
     (clamp(channel, 0.0, 1.0) * 255.0) as u8
 }
 
-fn main() { 
+fn main() {
     let mut p = 0.1;
     let increment = 0.1;
     let p_max = 1.0;
     let mut i = 0;
-    
+
     //while p < p_max {
-	let sampler = StratifiedSampler::new(800.0, 800.0, 9);
-        let camera = OrthographicCamera::new(
-            Point3::new(0.0, 0.0, -1.0), 
-            Vector3::new(1.0, 0.0, 0.0),
-            Vector3::new(0.0, 1.0, 0.0),
-            800.0,
-            800.0,
-            Box::new(sampler));
-        let sphere = DistanceEstimator::sphere_estimator(0.2).repeat(Point3::new(0.4, 1.0, 0.4));
-	//let cube = DistanceEstimator::cube_estimator(Point3::new(0.5, 0.5, 0.5)); //.repeat(Point3::new(0.6, 1.0, 0.6));
-	//let intersect = cube.intersect(sphere);
-	//let min = DistanceEstimator::min_estimator(vec![sphere, cube]);
-	let lights = vec![Light::new(Point3::new(-6.0, -5.0, -1.0), Vector3::new(1.0, 1.0, 1.0), 0.5)];
-	//Light::new(Point3::new(-5.0, -5.0, 1.0), Vector3::new(1.0, 1.0, 1.0), 0.7)];
-	let scene = Scene::new(lights, sphere, Box::new(camera));
-	let mut renderer = RayMarcher::new(800, 800, scene);
-	let result = renderer.render();
-	let w = result.width();
-	let h = result.height();
-	let pixels: Vec<_> = result.into_raw();
-	let bytes: Vec<_> = pixels.into_iter().map(|f| to_u8(f)).collect();
-	let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
-	image.save(Path::new(&format!("image_{}.png", i))).unwrap();
-	i += 1;
-	p += increment;
+    let sampler = StratifiedSampler::new(800.0, 800.0, 9);
+    let camera = OrthographicCamera::new(
+        Point3::new(0.0, 0.0, -1.0),
+        Vector3::new(1.0, 0.0, 0.0),
+        Vector3::new(0.0, 1.0, 0.0),
+        800.0,
+        800.0,
+        Box::new(sampler),
+    );
+    let sphere = DistanceEstimator::sphere_estimator(0.2).repeat(Point3::new(0.4, 1.0, 0.4));
+    //let cube = DistanceEstimator::cube_estimator(Point3::new(0.5, 0.5, 0.5)); //.repeat(Point3::new(0.6, 1.0, 0.6));
+    //let intersect = cube.intersect(sphere);
+    //let min = DistanceEstimator::min_estimator(vec![sphere, cube]);
+    let lights = vec![Light::new(
+        Point3::new(-6.0, -5.0, -1.0),
+        Vector3::new(1.0, 1.0, 1.0),
+        0.5,
+    )];
+    //Light::new(Point3::new(-5.0, -5.0, 1.0), Vector3::new(1.0, 1.0, 1.0), 0.7)];
+    let scene = Scene::new(lights, sphere, Box::new(camera));
+    let mut renderer = RayMarcher::new(800, 800, scene);
+    let result = renderer.render();
+    let w = result.width();
+    let h = result.height();
+    let pixels: Vec<_> = result.into_raw();
+    let bytes: Vec<_> = pixels.into_iter().map(|f| to_u8(f)).collect();
+    let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
+    image.save(Path::new(&format!("image_{}.png", i))).unwrap();
+    i += 1;
+    p += increment;
     //}
     //println!("Average iterations per pixel: {}", renderer.avg_iters);
 }

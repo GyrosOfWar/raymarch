@@ -5,7 +5,7 @@ pub type Vector = Vector3<f32>;
 
 pub struct Ray {
     pub origin: Point,
-    pub direction: Vector
+    pub direction: Vector,
 }
 
 impl Ray {
@@ -13,11 +13,11 @@ impl Ray {
     pub fn new(ro: Point, rd: Vector) -> Ray {
         Ray {
             origin: ro,
-            direction: rd
+            direction: rd,
         }
     }
 
-	#[inline]
+    #[inline]
     pub fn eval(&self, t: f32) -> Point {
         self.origin + self.direction * t
     }

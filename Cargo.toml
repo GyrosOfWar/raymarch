@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
-nalgebra = "*"
-image = "*"
-rand = "*"
+nalgebra = "0.14.1"
+image = "0.18"
+rand = "0.4"

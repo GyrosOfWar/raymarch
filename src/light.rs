@@ -1,5 +1,5 @@
+use crate::ray::*;
 use nalgebra::Vector3;
-use ray::*;
 
 pub type Color = Vector3<f32>;
 

@@ -1,8 +1,8 @@
+use crate::ray::*;
 use nalgebra::{Point3, Vector3};
-use ray::*;
 use std::{f32, fmt};
 
-pub type EstimatorFunc = Box<Fn(Point, &[f32]) -> f32>;
+pub type EstimatorFunc = Box<dyn Fn(Point, &[f32]) -> f32>;
 
 pub struct DistanceEstimator {
     params: Vec<f32>,

@@ -1,5 +1,5 @@
+use crate::ray::{Point, Ray, Vector};
 use rand::{thread_rng, Rng, ThreadRng};
-use ray::{Point, Ray, Vector};
 use std::fmt;
 
 pub trait Camera {
@@ -13,7 +13,7 @@ pub struct OrthographicCamera {
     up: Vector,
     x_res: f32,
     y_res: f32,
-    sampler: Box<Sampler>,
+    sampler: Box<dyn Sampler>,
 }
 
 impl OrthographicCamera {
@@ -23,7 +23,7 @@ impl OrthographicCamera {
         up: Vector,
         x_res: f32,
         y_res: f32,
-        sampler: Box<Sampler>,
+        sampler: Box<dyn Sampler>,
     ) -> OrthographicCamera {
         OrthographicCamera {
             eye,

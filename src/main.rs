@@ -4,13 +4,13 @@ extern crate rand;
 
 // TODO port to webasm?
 
-use camera::*;
-use distance_estimator::*;
+use crate::camera::*;
+use crate::distance_estimator::*;
+use crate::light::*;
+use crate::ray::{Point, Ray, Vector};
+use crate::scene::Scene;
 use image::{ImageBuffer, Rgb};
-use light::*;
 use nalgebra::*;
-use ray::{Point, Ray, Vector};
-use scene::Scene;
 use std::path::Path;
 
 mod camera;

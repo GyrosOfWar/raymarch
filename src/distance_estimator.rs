@@ -1,6 +1,7 @@
-use crate::ray::*;
-use nalgebra::{Point3, Vector3};
+use nalgebra::Point3;
 use std::{f32, fmt};
+
+use crate::ray::{Point, Vector};
 
 pub type EstimatorFunc = Box<dyn Fn(Point, &[f32]) -> f32>;
 
@@ -62,7 +63,7 @@ impl DistanceEstimator {
 
     #[inline]
     pub fn normal(&self, p: Point, h: Vector) -> Vector {
-        Vector3::new(
+        Vector::new(
             self.eval(p + h) - self.eval(p - h),
             self.eval(p + h) - self.eval(p - h),
             self.eval(p + h) - self.eval(p - h),
@@ -70,12 +71,12 @@ impl DistanceEstimator {
     }
 
     pub fn repeat(self, c: Point) -> DistanceEstimator {
-        let name = format!("Repeat of {}", self.name.clone());
+        let name = format!("Repeat of {}", self.name);
         DistanceEstimator {
             params: self.params.clone(),
             name,
             func: Box::new(move |p, params| {
-                let q = Point3::new(
+                let q = Point::new(
                     (p.x % c.x) - c.x * -0.5,
                     (p.y % c.y) - c.y * -0.5,
                     (p.z % c.z) - c.z * -0.5,
@@ -115,5 +116,5 @@ fn push_all<T: Clone>(dest: &mut Vec<T>, src: &[T]) {
 }
 
 fn comp_max(p: Vector, t: f32) -> Vector {
-    Vector3::new(p.x.max(t), p.y.max(t), p.z.max(t))
+    Vector::new(p.x.max(t), p.y.max(t), p.z.max(t))
 }

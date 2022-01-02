@@ -1,12 +1,11 @@
 use crate::ray::{Point, Ray, Vector};
-use rand::{thread_rng, Rng, ThreadRng};
-use std::fmt;
+use rand::{rngs::ThreadRng, thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 
 pub trait Camera {
     fn samples(&mut self, x: u32, y: u32) -> Vec<Ray>;
 }
 
-#[allow(unused)]
 pub struct OrthographicCamera {
     eye: Point,
     right: Vector,
@@ -24,7 +23,7 @@ impl OrthographicCamera {
         x_res: f32,
         y_res: f32,
         sampler: Box<dyn Sampler>,
-    ) -> OrthographicCamera {
+    ) -> Self {
         OrthographicCamera {
             eye,
             right,
@@ -79,7 +78,9 @@ impl Sampler for SimpleSampler {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StratifiedSampler {
+    #[serde(skip)]
     rng: ThreadRng,
     x_res: f32,
     y_res: f32,
@@ -120,22 +121,12 @@ impl Sampler for StratifiedSampler {
                 let x_max = x + self.stride;
                 let y_max = y + self.stride;
 
-                let sx = self.rng.gen_range(x, x_max);
-                let sy = self.rng.gen_range(y, y_max);
+                let sx = self.rng.gen_range(x..x_max);
+                let sy = self.rng.gen_range(y..y_max);
                 samples.push(pixel_to_ndc(sx, sy, self.x_res, self.y_res));
             }
         }
 
         samples
-    }
-}
-
-impl fmt::Debug for StratifiedSampler {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "x_res: {}, y_res: {}, samples_per_pixel: {}",
-            self.x_res, self.y_res, self.samples_per_pixel
-        )
     }
 }

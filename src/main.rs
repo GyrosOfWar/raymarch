@@ -1,23 +1,20 @@
-extern crate image;
-extern crate nalgebra;
-extern crate rand;
-
-// TODO port to webasm?
-
-use crate::camera::*;
-use crate::distance_estimator::*;
-use crate::light::*;
+use crate::camera::SimpleSampler;
 use crate::ray::{Point, Ray, Vector};
 use crate::scene::Scene;
+use camera::{OrthographicCamera, StratifiedSampler};
+use distance_estimator::DistanceEstimator;
+use image::Pixel;
 use image::{ImageBuffer, Rgb};
-use nalgebra::*;
+use light::{Color, Light};
 use std::path::Path;
+use std::time::Instant;
 
 mod camera;
 mod distance_estimator;
 mod light;
 mod ray;
 mod scene;
+mod file;
 
 pub const MAX_STEPS: usize = 64;
 pub const EPSILON: f32 = 0.00001;
@@ -42,24 +39,21 @@ impl RayMarcher {
         for (x, y, pixel) in image.enumerate_pixels_mut() {
             let rays = self.scene.camera.samples(x, y);
             let samples: Vec<_> = rays.into_iter().map(|r| self.march_ray(r)).collect();
-            let mut color = Vector3::new(0.0, 0.0, 0.0);
+            let mut color = Vector::new(0.0, 0.0, 0.0);
             let sample_count = samples.len() as f32;
             for (count, s) in samples {
                 if count < MAX_STEPS {
                     color += s / sample_count;
                 }
             }
-            let c = Rgb {
-                data: [color.x, color.y, color.z],
-            };
-            *pixel = c;
+            *pixel = Rgb::from_channels(color.x, color.y, color.z, 0.0);
         }
         image
     }
 
     #[inline]
     fn shade_pixel(&self, p: Point, normal: Vector) -> Color {
-        let mut color = Vector3::new(0.0, 0.0, 0.0);
+        let mut color = Vector::new(0.0, 0.0, 0.0);
         for light in &self.scene.lights {
             let light_dir = light.calc_direction(p);
             let light_intensity = light.calc_intensity(p);
@@ -71,7 +65,7 @@ impl RayMarcher {
 
     #[inline]
     fn background_color(&self) -> Color {
-        Vector3::new(0.0, 0.0, 0.0)
+        Vector::new(0.0, 0.0, 0.0)
     }
 
     #[inline]
@@ -92,30 +86,29 @@ impl RayMarcher {
 }
 
 fn to_u8(channel: f32) -> u8 {
-    (clamp(channel, 0.0, 1.0) * 255.0) as u8
+    (nalgebra::clamp(channel, 0.0, 1.0) * 255.0) as u8
 }
 
 fn main() {
-    //while p < p_max {
-    let sampler = StratifiedSampler::new(800.0, 800.0, 9);
+    let start = Instant::now();
+    let sampler = SimpleSampler { x_res: 800.0, y_res: 800.0 };
     let camera = OrthographicCamera::new(
-        Point3::new(0.0, 0.0, -1.0),
-        Vector3::new(1.0, 0.0, 0.0),
-        Vector3::new(0.0, 1.0, 0.0),
+        Point::new(0.0, 0.0, -1.0),
+        Vector::new(1.0, 0.0, 0.0),
+        Vector::new(0.0, 1.0, 0.0),
         800.0,
         800.0,
         Box::new(sampler),
     );
-    let sphere = DistanceEstimator::sphere_estimator(0.2).repeat(Point3::new(0.4, 1.0, 0.4));
-    //let cube = DistanceEstimator::cube_estimator(Point3::new(0.5, 0.5, 0.5)); //.repeat(Point3::new(0.6, 1.0, 0.6));
-    //let intersect = cube.intersect(sphere);
-    //let min = DistanceEstimator::min_estimator(vec![sphere, cube]);
-    let lights = vec![Light::new(
-        Point3::new(-6.0, -5.0, -1.0),
-        Vector3::new(1.0, 1.0, 1.0),
-        0.5,
-    )];
-    //Light::new(Point3::new(-5.0, -5.0, 1.0), Vector3::new(1.0, 1.0, 1.0), 0.7)];
+    let sphere = DistanceEstimator::sphere_estimator(0.2).repeat(Point::new(0.4, 1.0, 0.4));
+    let lights = vec![
+        Light::new(
+            Point::new(-6.0, -5.0, -1.0),
+            Vector::new(1.0, 1.0, 1.0),
+            0.5,
+        ),
+        Light::new(Point::new(5.0, 5.0, -1.0), Vector::new(1.0, 1.0, 1.0), 0.8),
+    ];
     let scene = Scene::new(lights, sphere, Box::new(camera));
     let mut renderer = RayMarcher::new(800, 800, scene);
     let result = renderer.render();
@@ -125,4 +118,6 @@ fn main() {
     let bytes: Vec<_> = pixels.into_iter().map(to_u8).collect();
     let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
     image.save(Path::new("image_0.png")).unwrap();
+    let elapsed = start.elapsed();
+    println!("took {} ms to render", elapsed.as_millis())
 }

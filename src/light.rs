@@ -1,9 +1,9 @@
-use crate::ray::*;
+use crate::ray::{Point, Vector};
 use nalgebra::Vector3;
+use serde::{Deserialize, Serialize};
 
 pub type Color = Vector3<f32>;
 
-#[derive(Debug)]
 pub struct Light {
     position: Point,
     color: Color,

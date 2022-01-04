@@ -10,26 +10,15 @@ pub struct OrthographicCamera {
     eye: Point,
     right: Vector,
     up: Vector,
-    x_res: f32,
-    y_res: f32,
     sampler: Box<dyn Sampler>,
 }
 
 impl OrthographicCamera {
-    pub fn new(
-        eye: Point,
-        right: Vector,
-        up: Vector,
-        x_res: f32,
-        y_res: f32,
-        sampler: Box<dyn Sampler>,
-    ) -> Self {
+    pub fn new(eye: Point, right: Vector, up: Vector, sampler: Box<dyn Sampler>) -> Self {
         OrthographicCamera {
             eye,
             right,
             up,
-            x_res,
-            y_res,
             sampler,
         }
     }

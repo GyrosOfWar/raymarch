@@ -1,4 +1,4 @@
-use crate::camera::{Camera};
+use crate::camera::Camera;
 use crate::distance_estimator::DistanceEstimator;
 use crate::light::Light;
 

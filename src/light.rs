@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 pub type Color = Vector3<f32>;
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Light {
     position: Point,
     color: Color,

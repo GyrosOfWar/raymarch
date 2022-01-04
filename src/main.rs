@@ -1,32 +1,31 @@
-use crate::camera::SimpleSampler;
+use crate::file::read_file;
 use crate::ray::{Point, Ray, Vector};
 use crate::scene::Scene;
-use camera::{OrthographicCamera, StratifiedSampler};
-use distance_estimator::DistanceEstimator;
+use color_eyre::Report;
 use image::Pixel;
 use image::{ImageBuffer, Rgb};
-use light::{Color, Light};
+use light::Color;
 use std::path::Path;
 use std::time::Instant;
 
 mod camera;
 mod distance_estimator;
+mod file;
 mod light;
 mod ray;
 mod scene;
-mod file;
 
 pub const MAX_STEPS: usize = 64;
 pub const EPSILON: f32 = 0.00001;
 
 pub struct RayMarcher {
-    x_size: usize,
-    y_size: usize,
+    x_size: u32,
+    y_size: u32,
     scene: Scene,
 }
 
 impl RayMarcher {
-    pub fn new(x_size: usize, y_size: usize, scene: Scene) -> RayMarcher {
+    pub fn new(x_size: u32, y_size: u32, scene: Scene) -> RayMarcher {
         RayMarcher {
             x_size,
             y_size,
@@ -89,35 +88,23 @@ fn to_u8(channel: f32) -> u8 {
     (nalgebra::clamp(channel, 0.0, 1.0) * 255.0) as u8
 }
 
-fn main() {
+fn main() -> Result<(), Report> {
+    color_eyre::install()?;
+    let file_name = std::env::args().nth(1).unwrap_or("scene.json".into());
+    let (scene, x, y) = read_file(&file_name)?;
+    let mut renderer = RayMarcher::new(x, y, scene);
+
     let start = Instant::now();
-    let sampler = SimpleSampler { x_res: 800.0, y_res: 800.0 };
-    let camera = OrthographicCamera::new(
-        Point::new(0.0, 0.0, -1.0),
-        Vector::new(1.0, 0.0, 0.0),
-        Vector::new(0.0, 1.0, 0.0),
-        800.0,
-        800.0,
-        Box::new(sampler),
-    );
-    let sphere = DistanceEstimator::sphere_estimator(0.2).repeat(Point::new(0.4, 1.0, 0.4));
-    let lights = vec![
-        Light::new(
-            Point::new(-6.0, -5.0, -1.0),
-            Vector::new(1.0, 1.0, 1.0),
-            0.5,
-        ),
-        Light::new(Point::new(5.0, 5.0, -1.0), Vector::new(1.0, 1.0, 1.0), 0.8),
-    ];
-    let scene = Scene::new(lights, sphere, Box::new(camera));
-    let mut renderer = RayMarcher::new(800, 800, scene);
     let result = renderer.render();
+    let elapsed = start.elapsed();
+    println!("took {} ms to render", elapsed.as_millis());
+
     let w = result.width();
     let h = result.height();
     let pixels: Vec<_> = result.into_raw();
     let bytes: Vec<_> = pixels.into_iter().map(to_u8).collect();
     let image: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, bytes).unwrap();
     image.save(Path::new("image_0.png")).unwrap();
-    let elapsed = start.elapsed();
-    println!("took {} ms to render", elapsed.as_millis())
+
+    Ok(())
 }
